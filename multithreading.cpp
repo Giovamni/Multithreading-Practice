@@ -1,16 +1,28 @@
-// Hello World of Concurrency 
 #include <iostream>
-#include <thread> // 1
+#include <thread>
+#include <utility>
 
-void hello()  // 2. Has to have an inital function
+void foo()
 {
-    std::cout << "Hello Concurrent World\n";
+    std::cout << "Foo\n";
 }
+
+void bar() 
+{
+    std::cout << "Bar\n";
+} 
 
 int main() 
 {
-    std::thread t(hello); // 3
-    t.join(); // 4. Wait for the thread associated with std::thread object 
+    std::thread t1(foo);
+    std::thread t2{std::move(t1)}; // Ownership is transfered to t2 (has foo)
+
+    t1 = std::thread(bar); // Associated with temporary std::thread object, bar
+
+    std::thread t3;
+
+    t3 = std::move(t2); // Ownership of t2 transfer to t3 (has foo)
+    t1 = std::move(t3); // Terminates because t1 already has an associated thread. 
 
     return EXIT_SUCCESS;
 }
