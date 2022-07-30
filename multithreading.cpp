@@ -1,28 +1,32 @@
 #include <iostream>
 #include <thread>
-#include <utility>
+#include <mutex>
+#include <chrono>
 
-void foo()
+int counter = 0;
+std::timed_mutex mtx;
+
+void increase (uint16_t id) 
 {
-    std::cout << "Foo\n";
+    auto sc = std::chrono::steady_clock::now();
+    if(mtx.try_lock_until(sc + std::chrono::milliseconds(150))) {
+        ++counter;
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+        std::cout << "Thread " << id << " Entered" << std::endl;
+        mtx.unlock();
+    }
+    else {
+        std::cout << "Thread " << id<< " Couldn't Enter" << std::endl;
+    }
 }
 
-void bar() 
+int main ()
 {
-    std::cout << "Bar\n";
-} 
+    std::thread t1(increase, 1);
+    std::thread t2(increase, 2);
 
-int main() 
-{
-    std::thread t1(foo);
-    std::thread t2{std::move(t1)}; // Ownership is transfered to t2 (has foo)
-
-    t1 = std::thread(bar); // Associated with temporary std::thread object, bar
-
-    std::thread t3;
-
-    t3 = std::move(t2); // Ownership of t2 transfer to t3 (has foo)
-    t1 = std::move(t3); // Terminates because t1 already has an associated thread. 
+    t1.join();
+    t2.join();
 
     return EXIT_SUCCESS;
-}
+} 
