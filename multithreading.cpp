@@ -1,32 +1,48 @@
 #include <iostream>
-#include <thread>
 #include <mutex>
+#include <thread>
+#include <condition_variable>
 #include <chrono>
+#include <atomic>
 
-int counter = 0;
-std::timed_mutex mtx;
+class SpinLock {
+private:
+    std::atomic_flag flag = ATOMIC_FLAG_INIT;
+public:
+    void lock()
+    {
+        while( flag.test_and_set());
+        std::cout << "Locked\n";
+    }
 
-void increase (uint16_t id) 
+    void unlock()
+    {
+        flag.clear();
+        std::cout << "Unlocked\n";
+    }
+
+};
+
+SpinLock spin;
+static int balance{0}; 
+
+void addMoney(int value)
 {
-    auto sc = std::chrono::steady_clock::now();
-    if(mtx.try_lock_until(sc + std::chrono::milliseconds(150))) {
-        ++counter;
-        std::this_thread::sleep_for(std::chrono::milliseconds(200));
-        std::cout << "Thread " << id << " Entered" << std::endl;
-        mtx.unlock();
-    }
-    else {
-        std::cout << "Thread " << id<< " Couldn't Enter" << std::endl;
-    }
+    spin.lock();
+    balance += value;
+    std::cout << value << '\n';
+    spin.unlock();
 }
 
-int main ()
+int main()
 {
-    std::thread t1(increase, 1);
-    std::thread t2(increase, 2);
+    std::thread t1(addMoney, 100);
+    std::thread t2(addMoney, 200);
 
-    t1.join();
     t2.join();
+    t1.join();
+
+    //std::cout << balance << '\n';
 
     return EXIT_SUCCESS;
-} 
+}
